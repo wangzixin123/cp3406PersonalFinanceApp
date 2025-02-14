@@ -58,7 +58,7 @@ fun TransactionListScreen(navController: NavController) {
                 items(
                     listOf(
                         "2025-02-01 | Lunch | -¥15.00 | Cash",
-                        "2025-02-02 | Transport | -¥20.00 | Bank Card",
+                        "2025-02-02 | Transport | -¥20.00 | Cash",
                         "2025-02-03 | Entertainment | -¥50.00 | Cash",
                         "2025-02-05 | Salary | +¥5000.00 | Bank Card"
                     )
@@ -76,3 +76,5 @@ fun TransactionListScreen(navController: NavController) {
         }
     }
 }
+
+
