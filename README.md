@@ -16,3 +16,8 @@ This is a personal finance tracking app developed for CP3406. The app helps user
 - **Navigation Component**
 
 ## 📂 Project Structure
+📦 finance-app
+ ┣ 📂 app                  # Main application source code
+ ┣ 📂 docs                 # UI mockups & design references
+ ┣ 📜 README.md            # Project documentation
+ ┗ 📜 .gitignore           # Ignore unnecessary files in Git commits
