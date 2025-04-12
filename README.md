@@ -1,23 +1,51 @@
-# Personal Finance App
+# Personal Finance Tracker App
 
-## 📌 Introduction
-This is a personal finance tracking app developed for CP3406. The app helps users manage their income, expenses, and savings efficiently.
+A simple yet powerful Android application to help users manage their personal finances.  
+Built using **Kotlin**, **Jetpack Compose**, **Room Database**, and **DataStore**.
 
-## 🎯 Features
-- **Track Income & Expenses**: Users can log their transactions with categories and payment methods.
-- **Budget Management**: Users can set a monthly budget and monitor their remaining balance.
-- **Statistics & Insights**: Provides graphical analysis of spending trends.
-- **Savings Tracker**: Helps users set and track savings goals.
+---
 
-## 🛠️ Technologies Used
-- **Kotlin**
-- **Jetpack Compose**
-- **Material Design Components**
-- **Navigation Component**
+## Features
 
-## 📂 Project Structure
-📦 finance-app
- ┣ 📂 app                  # Main application source code
- ┣ 📂 docs                 # UI mockups & design references
- ┣ 📜 README.md            # Project documentation
- ┗ 📜 .gitignore           # Ignore unnecessary files in Git commits
+- Record income and expense transactions
+- View monthly and yearly financial statistics
+- Track total balance and set personal saving goals
+- Edit monthly budget dynamically
+- View transaction history and delete records if needed
+- Persistent data storage using Room and DataStore
+- Clean and responsive UI using Material 3
+
+---
+
+## Technologies & APIs Used
+
+| Technology          | Purpose                                          |
+|----------------------|---------------------------------------------------|
+| Jetpack Compose      | Build modern, declarative UIs                    |
+| Room Database        | Store and manage transaction data locally        |
+| DataStore Preferences| Save user's saving goals and budget settings     |
+| ViewModel + StateFlow| Efficient UI state management                    |
+
+---
+
+
+
+## Testing
+
+- Unit tests implemented for `TransactionViewModel`
+- Covered functions:
+  - `updateSavingGoal()`
+  - `updateTotalBudget()`
+  - `insertTransaction()`
+- Basic validation checks using `JUnit4`
+- Test framework: `JUnit` + `MockK`
+
+Example unit test:
+
+```kotlin
+@Test
+fun testUpdateSavingGoal() {
+    val newGoal = 30000.0
+    viewModel.updateSavingGoal(newGoal)
+    assertEquals(newGoal, viewModel.savingGoal.value, 0.001)
+}
