@@ -2,38 +2,56 @@ package com.example.financetrackerapp.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.material3.Icon
+import com.example.financetrackerapp.viewmodel.TransactionViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.LocalDate
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.IconButton
-import java.util.Locale
-import android.graphics.Paint
-import android.graphics.Typeface
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatisticsScreen(navController: NavController) {
-    var selectedYear by remember { mutableIntStateOf(2025) }
-    var selectedPieChartRange by remember { mutableStateOf("This Month") }
-    var expanded by remember { mutableStateOf(false) }  // Controls dropdown menu state
+fun StatisticsScreen(
+    navController: NavController,
+    viewModel: TransactionViewModel = viewModel()
+) {
+    val transactions by viewModel.transactions.collectAsState()
 
-    val monthlyData = listOf(1200f, 950f, 1100f, 1300f, 900f, 850f, 1250f, 1400f, 1500f, 1350f, 1200f, 1100f)
+    val now = LocalDate.now()
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Monthly, 1 = Yearly
+    var selectedYear by remember { mutableIntStateOf(now.year) }
+    var selectedMonth by remember { mutableIntStateOf(now.monthValue) }
+    var selectedType by remember { mutableStateOf("Expense") }
+
+    val isExpense = selectedType == "Expense"
+
+    // Filter transactions by selected year, month, and type
+    val filteredTransactions = transactions.filter {
+        it.date.year == selectedYear &&
+                (selectedTab == 1 || it.date.monthValue == selectedMonth) &&
+                if (isExpense) it.amount < 0 else it.amount > 0
+    }
+
+    val totalAmount = filteredTransactions.sumOf { kotlin.math.abs(it.amount) }
+
+    // Top categories by amount
+    val categoryTotals = filteredTransactions
+        .groupBy { it.category }
+        .mapValues { (_, list) -> list.sumOf { kotlin.math.abs(it.amount) } }
+        .toList()
+        .sortedByDescending { it.second }
+        .take(5)
 
     Scaffold(
         topBar = {
@@ -48,163 +66,169 @@ fun StatisticsScreen(navController: NavController) {
         }
     ) { padding ->
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Expense data range selection
-            Text("Select Expense Data Range", fontWeight = FontWeight.Bold)
-
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Button(onClick = { expanded = true }) {
-                    Text(selectedPieChartRange)
+            // Top tab: Monthly / Yearly
+            TabRow(selectedTabIndex = selectedTab) {
+                listOf("Monthly", "Yearly").forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title) }
+                    )
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    listOf("Today", "Last Week", "This Month", "This Year").forEach { range ->
-                        DropdownMenuItem(
-                            text = { Text(range) },
-                            onClick = {
-                                selectedPieChartRange = range
-                                expanded = false
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Time switcher and type switcher
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        if (selectedTab == 0) {
+                            if (selectedMonth == 1) {
+                                selectedMonth = 12
+                                selectedYear--
+                            } else {
+                                selectedMonth--
                             }
+                        } else {
+                            selectedYear--
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Previous")
+                    }
+
+                    Text(
+                        if (selectedTab == 0)
+                            "$selectedYear-${selectedMonth.toString().padStart(2, '0')}"
+                        else
+                            "$selectedYear",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    IconButton(onClick = {
+                        if (selectedTab == 0) {
+                            if (selectedMonth == 12) {
+                                selectedMonth = 1
+                                selectedYear++
+                            } else {
+                                selectedMonth++
+                            }
+                        } else {
+                            selectedYear++
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Next")
+                    }
+                }
+
+                Row {
+                    listOf("Expense", "Income").forEach { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            label = { Text(type) },
+                            modifier = Modifier.padding(horizontal = 4.dp)
                         )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Expense Category Distribution ($selectedPieChartRange)", fontWeight = FontWeight.Bold)
 
-            // Expense pie chart
-            PieChart(selectedPieChartRange)
-
-            // Legend for pie chart
-            PieChartLegend()
+            // Total amount display
+            Text(
+                "¥ ${"%.2f".format(totalAmount)}",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (isExpense) Color.Red else Color(0xFF2E7D32)
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Spending Trend", fontWeight = FontWeight.Bold)
 
-            // Year selection for spending trend
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+            // Bar chart section
+            Text("${selectedType} Comparison (Bar Chart)", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(horizontal = 12.dp)
             ) {
-                Button(onClick = { selectedYear-- }) { Text("<") }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(selectedYear.toString(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.width(16.dp))
-                Button(onClick = { selectedYear++ }) { Text(">") }
-            }
+                val barWidth = size.width / 12f * 0.6f
+                val spacing = size.width / 12f
+                val maxValue = (1..12).maxOf { month ->
+                    transactions.filter {
+                        (if (isExpense) it.amount < 0 else it.amount > 0) &&
+                                it.date.year == selectedYear &&
+                                it.date.monthValue == month
+                    }.sumOf { kotlin.math.abs(it.amount) }
+                }.coerceAtLeast(1.0)
 
-            Spacer(modifier = Modifier.height(16.dp))
+                for (month in 1..12) {
+                    val total = transactions.filter {
+                        (if (isExpense) it.amount < 0 else it.amount > 0) &&
+                                it.date.year == selectedYear &&
+                                it.date.monthValue == month
+                    }.sumOf { kotlin.math.abs(it.amount) }
 
-            // Line chart showing monthly spending
-            LineChart(data = monthlyData)
-        }
-    }
-}
+                    val heightRatio = total / maxValue
+                    val barHeight = (size.height - 30.dp.toPx()) * heightRatio.toFloat()
 
-// Pie chart component displaying expense distribution
-@Composable
-fun PieChart(range: String) {
-    val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow)
-    val angles = when (range) {
-        "Today" -> listOf(30f, 60f, 90f, 180f)
-        "Last Week" -> listOf(80f, 70f, 100f, 110f)
-        "This Month" -> listOf(120f, 90f, 80f, 70f)
-        "This Year" -> listOf(140f, 60f, 100f, 60f)
-        else -> listOf(120f, 90f, 80f, 70f)
-    }
+                    val x = (month - 1) * spacing + (spacing - barWidth) / 2
+                    val y = size.height - barHeight
 
-    Canvas(
-        modifier = Modifier
-            .size(200.dp)
-            .padding(16.dp)
-    ) {
-        var startAngle = 0f
-        for (i in angles.indices) {
-            drawArc(
-                color = colors[i],
-                startAngle = startAngle,
-                sweepAngle = angles[i],
-                useCenter = true
-            )
-            startAngle += angles[i]
-        }
-    }
-}
+                    drawRect(
+                        color = if (month == selectedMonth) Color(0xFF4CAF50) else Color.LightGray,
+                        topLeft = androidx.compose.ui.geometry.Offset(x, y),
+                        size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
+                    )
 
-// Legend component for pie chart categories
-@Composable
-fun PieChartLegend() {
-    val pieData = listOf(
-        Pair("Food", Color.Red),
-        Pair("Transport", Color.Green),
-        Pair("Entertainment", Color.Blue),
-        Pair("Other", Color.Yellow)
-    )
-
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        pieData.forEach { (category, color) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Canvas(modifier = Modifier.size(12.dp)) {
-                    drawCircle(color)
+                    drawIntoCanvas {
+                        it.nativeCanvas.drawText(
+                            "${month}M",
+                            x + barWidth / 2,
+                            size.height,
+                            android.graphics.Paint().apply {
+                                textSize = 26f
+                                color = android.graphics.Color.GRAY
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(category, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-// Line chart component displaying monthly spending trend
-@Composable
-fun LineChart(data: List<Float>) {
-    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp)
-            .padding(16.dp)
-    ) {
-        val maxY = data.maxOrNull() ?: 1f
-        val minY = data.minOrNull() ?: 0f
-        val rangeY = maxY - minY
-        val stepX = size.width / (data.size - 1)
-
-        // Create a path for the line chart
-        val path = Path().apply {
-            moveTo(0f, size.height - ((data[0] - minY) / rangeY * size.height))
-            for (i in 1 until data.size) {
-                lineTo(i * stepX, size.height - ((data[i] - minY) / rangeY * size.height))
-            }
-        }
-
-        // Draw text labels for months
-        drawIntoCanvas { canvas ->
-            val textPaint = Paint().apply {
-                textSize = 30f
-                color = android.graphics.Color.BLACK
-                textAlign = Paint.Align.CENTER
-                typeface = Typeface.DEFAULT_BOLD
             }
 
-            months.forEachIndexed { i, month ->
-                val x = i * stepX
-                canvas.nativeCanvas.drawText(month, x, size.height + 30f, textPaint)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Top categories ranking
+            Text("${selectedType} Ranking", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (categoryTotals.isEmpty()) {
+                Text("No Data Available")
+            } else {
+                categoryTotals.forEachIndexed { index, (category, amount) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${index + 1}. $category")
+                        Text("¥ ${"%.2f".format(amount)}")
+                    }
+                }
             }
-        }
-
-        // Draw the line chart
-        drawPath(path, color = Color.Blue, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f))
-
-        // Draw data points on the chart
-        for (i in data.indices) {
-            val x = i * stepX
-            val y = size.height - ((data[i] - minY) / rangeY * size.height)
-            drawCircle(Color.Red, radius = 5f, center = Offset(x, y))
         }
     }
 }

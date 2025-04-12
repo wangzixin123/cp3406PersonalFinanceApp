@@ -11,26 +11,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import java.util.Locale
+import com.example.financetrackerapp.viewmodel.TransactionViewModel
+import java.util.*
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.IconButton
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BalanceScreen(navController: NavController) {
-    var totalBalance by remember { mutableStateOf(12345.78) } // Account balance
-    val totalIncome by remember { mutableStateOf(50000.00) }  // Total income
-    val totalExpense by remember { mutableStateOf(37654.22) } // Total expenses
-    var savingGoal by remember { mutableStateOf(20000.00) }   // Default saving goal
+fun BalanceScreen(
+    navController: NavController,
+    viewModel: TransactionViewModel = viewModel()
+) {
+    val transactions by viewModel.transactions.collectAsState()
+    val savingGoal by viewModel.savingGoal
 
-    // Calculate saving goal progress
-    val savingProgress = (totalBalance / savingGoal).coerceIn(0.0, 1.0) // **Ensure it's a Double**
+    val totalIncome = transactions.filter { it.amount > 0 }.sumOf { it.amount }
+    val totalExpense = transactions.filter { it.amount < 0 }.sumOf { it.amount * -1 }
+    val totalBalance = totalIncome - totalExpense
+
+    // Text field state for inputting new saving goal
+    var inputGoalText by remember { mutableStateOf(savingGoal.toString()) }
+
+    val savingProgress = (totalBalance / savingGoal).coerceIn(0.0, 1.0)
     val progressColor = when {
-        savingProgress >= 1.0 -> Color.Green  // Goal Achieved
-        savingProgress >= 0.5 -> Color.Blue   // Midway Progress
-        else -> Color.Red                    // Less than 50% progress
+        savingProgress >= 1.0 -> Color.Green
+        savingProgress >= 0.5 -> Color.Blue
+        else -> Color.Red
     }
 
     Scaffold(
@@ -52,7 +61,7 @@ fun BalanceScreen(navController: NavController) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Display Total Balance
+            // Account balance display
             Text("Account Balance:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Text(
                 "¥ ${String.format(Locale.US, "%.2f", totalBalance)}",
@@ -64,53 +73,51 @@ fun BalanceScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider()
 
-            // Income & Expense Summary
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Income and expense summary
             Text("Income & Expense Summary", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Total Income: ¥${String.format(Locale.US, "%.2f", totalIncome)}",
-                color = Color.Green,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Total Expense: ¥${String.format(Locale.US, "%.2f", totalExpense)}",
-                color = Color.Red,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Total Income: ¥${String.format(Locale.US, "%.2f", totalIncome)}", color = Color.Green, fontWeight = FontWeight.Bold)
+            Text("Total Expense: ¥${String.format(Locale.US, "%.2f", totalExpense)}", color = Color.Red, fontWeight = FontWeight.Bold)
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider()
 
-            // Saving Goal Section
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Saving goal display
             Text("Saving Goal", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text("Target: ¥${String.format(Locale.US, "%.2f", savingGoal)}", fontWeight = FontWeight.Bold)
 
-            // Progress Bar for Savings
+            // Progress bar for savings
             LinearProgressIndicator(
-                progress = { savingProgress.toFloat() },  // **Fixed progress parameter**
+                progress = { savingProgress.toFloat() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 color = progressColor
             )
 
-            // User Input to Adjust Saving Goal
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Input field to set new saving goal
             OutlinedTextField(
-                value = savingGoal.toString(),
-                onValueChange = { newValue ->
-                    newValue.toDoubleOrNull()?.let { savingGoal = it }
-                },
+                value = inputGoalText,
+                onValueChange = { inputGoalText = it },
                 label = { Text("Set Saving Goal") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Button to Save Changes
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Button to update saving goal
             Button(
-                onClick = { /* TODO: Save new goal */ },
+                onClick = {
+                    inputGoalText.toDoubleOrNull()?.let { newGoal ->
+                        viewModel.updateSavingGoal(newGoal)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Adjust Saving Goal")
@@ -118,3 +125,4 @@ fun BalanceScreen(navController: NavController) {
         }
     }
 }
+

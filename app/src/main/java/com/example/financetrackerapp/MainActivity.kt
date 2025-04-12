@@ -17,20 +17,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppNavigation() // ⭐ 启动导航
+            AppNavigation()
         }
     }
 }
 
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController() // ⭐ 创建导航控制器
+    val navController = rememberNavController()
 
-    NavHost(navController, startDestination = "home") { // ⭐ 设置默认页面
-        composable("home") { HomeScreen(navController) } // ⭐ 传递 navController
-        composable("add_record") { AddRecordScreen(navController) } // ⭐ 这里修正，传入 navController
-        composable("transactions") { TransactionListScreen(navController) } // ⭐ 这里修正，传入 navController
-        composable("statistics") { StatisticsScreen(navController) } // ⭐ 这里修正，传入 navController
+    NavHost(navController, startDestination = "home") {
+        composable("home") { HomeScreen(navController) }
+        composable("add_record") { AddRecordScreen(navController) }
+        composable("transactions") { TransactionListScreen(navController) }
+        composable("statistics") { StatisticsScreen(navController) }
         composable("balance") { BalanceScreen(navController) }
     }
 }
